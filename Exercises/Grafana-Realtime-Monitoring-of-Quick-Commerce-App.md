@@ -330,35 +330,6 @@ Click the Save & Test button to verify the connection.
   
 ---
 
-### **Step 4: Automate Alerts in Prometheus**
-
-Update `prometheus.yml`:
-
-```yaml
-alerting:
-  alertmanagers:
-    - static_configs:
-        - targets: ["localhost:9093"]
-
-alerts:
-  - alert: HighPendingDeliveries
-    expr: pending_deliveries > 40
-    for: 5m
-    labels:
-      severity: critical
-    annotations:
-      summary: "High Pending Deliveries"
-      description: "Pending deliveries exceeded threshold: {{ $value }}."
-```
-
-Restart Prometheus:
-```bash
-docker restart prometheus
-```
-Verify alerts in the Prometheus UI under the "Alerts" tab.
-
----
-
 ### **Step 5: Create the Jenkins Pipeline**
 
 Create a file named `Jenkinsfile`:
