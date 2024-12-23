@@ -1,7 +1,7 @@
 # Real-Time Delivery Monitoring Pipeline
 
 ## **Objective**
-You are a DevOps engineer in ZIPPTO managing a fast-paced delivery service that needs real-time insights into operational efficiency and delivery performance.
+You are a DevOps engineer in ZAPPTTO managing a fast-paced delivery service that needs real-time insights into operational efficiency and delivery performance.
 You task is to create monitoring application top provide insights on performance of the delivery service.
 
 ## **Approach**
@@ -112,6 +112,23 @@ Access metrics at [http://localhost:8000/metrics](http://localhost:8000/metrics)
 
 ---
 
+**Note about /metrics:**
+1. The endpoint **/metrics** is automatically created by the prometheus_client library when we start the HTTP server with start_http_server.
+2. **start_http_server** function in the prometheus_client library starts a simple HTTP server which by default listens on Port **8000**
+3. Each metric is defined by:
+     -  A name (e.g. total_deliveries).
+     -  A description (e.g. "Total number of deliveries").
+     -  A type (e.g., Gauge, Counter, Summary, etc.)
+     -  For example: total_deliveries = Gauge("total_deliveries", "Total number of deliveries") - defines metric called "total_deliveries" with description "Total number of deliveries" and type "Gauage"
+4. Type of Metrics:
+     -  **Counter** for counting.
+     -  **Gauge** for values that increase or decrease.
+     -  **Histogram** for bar distributions with a fixed number of buckets.
+     -  **Summary** for quantiles (e.g. percentiles)
+5. When we hit http://localhost:8000/metrics in a browser or use a tool like curl, the server responds with the current state of the metrics that is defined (total_deliveries, pending_deliveries, etc.).
+
+---
+
 ### **Step 2: Configure Prometheus**
 
 Create a file named `prometheus.yml`:
@@ -123,6 +140,17 @@ scrape_configs:
       - targets: ["host.docker.internal:8000"]
 ```
 
+---
+**Note about prometheus.yml file:**
+1. **scrape_configs** is top-level configuration key to define scrapping (i.e. read metrics) jobs
+2. **job_name** defines a specific scapping job
+3. **targets** specifies the host name (endpoints) from where prometheus will scrape (i.e. read) metrics
+4. **host.docker.internal** this specifies the target hostname.
+   - This hostname allows a Docker container (e.g., Prometheus) to access services running on the host machine.
+   - On **Linux or WSL** use the host IP address (e.g. 172.17.0.1)
+   - On **MacOS and Windows native** this resolves to the host machine IP address
+5. Prometheus will send HTTP GET requests to http://host.docker.internal:8000/metrics periodically at **default interval (15s)** to retrieve metrics.
+   
 Run Prometheus:
 ```bash
 docker run -d --name prometheus -p 9090:9090 \
@@ -134,8 +162,15 @@ Output
 docker run -d --name prometheus -p 9090:9090   -v $(pwd)/prometheus.yml:/etc/prometheus/prometheus.yml prom/prometheus
 754702408add8b672f0328e265e73b8bcf1d832317438d05d167349a83673f39
 ```
+Verify
+```
+docker ps -a | grep prom
+9b29317aa435   prom/prometheus  "/bin/prometheus --c…"   6 seconds ago   Up 4 seconds  0.0.0.0:9090->9090/tcp, :::9090->9090/tcp prometheus
+```
 
 Access Prometheus at [http://localhost:9090](http://localhost:9090).
+
+![Prometheus Main Page](images/prometheus-main-page.png "Prome")
 
 ---
 
