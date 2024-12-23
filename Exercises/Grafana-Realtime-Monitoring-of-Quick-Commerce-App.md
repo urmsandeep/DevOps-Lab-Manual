@@ -31,6 +31,7 @@ pip3 install prometheus-client
 delivery_monitoring/
 ├── delivery_metrics.py   # Python script to simulate metrics
 ├── prometheus.yml        # Prometheus configuration
+├── alerts_rules.yml      # Alerts configuration
 ├── Jenkinsfile           # Jenkins pipeline script
 
 Steps:
@@ -59,7 +60,8 @@ average_delivery_time = Summary("average_delivery_time", "Average delivery time 
 
 # Simulate delivery statuses
 def simulate_delivery():
-    pending = random.randint(10, 50)
+    #pending = random.randint(10, 50)
+    pending = random.randint(10, 20)  # Ensure values exceed the threshold
     on_the_way = random.randint(5, 20)
     delivered = random.randint(30, 70)
     avg_time = random.uniform(15, 45)
@@ -78,37 +80,59 @@ def simulate_delivery():
 
 if __name__ == "__main__":
     print("[INFO] Starting the HTTP server on port 8000...")
-    start_http_server(8000)
+    start_http_server(8000, addr="0.0.0.0")
     print("[INFO] HTTP server started. Simulating deliveries...")
     while True:
         simulate_delivery()
-        print("[INFO] Sleeping for 5 seconds...")
-        time.sleep(5)
+        print("[INFO] Sleeping for 1 seconds...")
+        time.sleep(1)
 ```
 
 Run the script:
 ```
 python3 delivery_metrics.py
 
-[INFO] Starting the HTTP server on port 8000...
-[INFO] HTTP server started. Simulating deliveries...
-[DEBUG] Total deliveries: 68
-[DEBUG] Pending deliveries: 23
-[DEBUG] On-the-way deliveries: 5
-[DEBUG] Average delivery time: 28.81 seconds
-[INFO] Sleeping for 5 seconds...
+[INFO] Sleeping for 1 seconds...
+[DEBUG] Total deliveries: 69
+[DEBUG] Pending deliveries: 20
+[DEBUG] On-the-way deliveries: 17
+[DEBUG] Average delivery time: 28.26 seconds
+[INFO] Sleeping for 1 seconds...
 [DEBUG] Total deliveries: 96
-[DEBUG] Pending deliveries: 30
-[DEBUG] On-the-way deliveries: 10
-[DEBUG] Average delivery time: 18.65 seconds
-[INFO] Sleeping for 5 seconds...
-[DEBUG] Total deliveries: 104
-[DEBUG] Pending deliveries: 24
-[DEBUG] On-the-way deliveries: 20
-[DEBUG] Average delivery time: 23.19 seconds
-[INFO] Sleeping for 5 seconds...
+[DEBUG] Pending deliveries: 13
+[DEBUG] On-the-way deliveries: 16
+[DEBUG] Average delivery time: 41.62 sec
 ```
+
 Access metrics at [http://localhost:8000/metrics](http://localhost:8000/metrics).
+
+```
+curl http://localhost:8000/metrics
+# HELP python_gc_objects_collected_total Objects collected during gc
+# TYPE python_gc_objects_collected_total counter
+python_gc_objects_collected_total{generation="0"} 242.0
+python_gc_objects_collected_total{generation="1"} 18.0
+python_gc_objects_collected_total{generation="2"} 0.0
+# HELP python_gc_objects_uncollectable_total Uncollectable objects found during GC
+# TYPE python_gc_objects_uncollectable_total counter
+python_gc_objects_uncollectable_total{generation="0"} 0.0
+python_gc_objects_uncollectable_total{generation="1"} 0.0
+python_gc_objects_uncollectable_total{generation="2"} 0.0
+# HELP python_gc_collections_total Number of times this generation was collected
+# TYPE python_gc_collections_total counter
+python_gc_collections_total{generation="0"} 33.0
+python_gc_collections_total{generation="1"} 2.0
+python_gc_collections_total{generation="2"} 0.0
+# HELP python_info Python platform information
+# TYPE python_info gauge
+python_info{implementation="CPython",major="3",minor="12",patchlevel="3",version="3.12.3"} 1.0
+# HELP process_virtual_memory_bytes Virtual memory size in bytes.
+# TYPE process_virtual_memory_bytes gauge
+process_virtual_memory_bytes 1.81510144e+08
+# HELP process_resident_memory_bytes Resident memory size in bytes.
+# TYPE process_resident_memory_bytes gauge
+process_resident_memory_bytes 2.3887872e+07
+```
 
 ---
 
@@ -129,17 +153,48 @@ Access metrics at [http://localhost:8000/metrics](http://localhost:8000/metrics)
 
 ---
 
-### **Step 2: Configure Prometheus**
+### **Step 2a: Configure Prometheus**
 
-Create a file named `prometheus.yml`:
+Create a file named **prometheus.ym**
 
-```yaml
+```
 scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
   - job_name: "delivery_service"
     static_configs:
-      - targets: ["host.docker.internal:8000"]
+      - targets: ["172.17.0.1:8000"]
+
+rule_files:
+  - /etc/prometheus/alert_rules.yml 
 ```
 
+### **Step 2a: Configure alerts**
+
+Create a file named **alert_rules.yml**
+```
+groups:
+  - name: delivery_alerts
+    rules:
+      - alert: HighPendingDeliveries
+        expr: pending_deliveries > 10
+        for: 15s
+        labels:
+          severity: warning
+        annotations:
+          summary: "High pending deliveries"
+          description: "Pending deliveries are above 10 for the last 15 second."
+
+      - alert: HighAverageDeliveryTime
+        expr:  (average_delivery_time_sum / average_delivery_time_count) > 30
+        labels:
+          severity: critical
+        annotations:
+          summary: "High average delivery time"
+          description: "Average delivery time is above 30 seconds for the last 15 seconds."
+```
 ---
 **Note about prometheus.yml file:**
 1. **scrape_configs** is top-level configuration key to define scrapping (i.e. read metrics) jobs
@@ -153,22 +208,22 @@ scrape_configs:
    
 Run Prometheus:
 ```
-docker run -d --name=prometheus --network=host prom/prometheus
+docker run -d --name prometheus --network=host -v ./prometheus.yml:/etc/prometheus/prometheus.yml -v ./alert_rules.yml:/etc/prometheus/alert_rules.yml  prom/prometheus
 ```
 
 Output
 ```
 docker run -d --name=prometheus --network=host prom/prometheus
-754702408add8b672f0328e265e73b8bcf1d832317438d05d167349a83673f39
+44cfd54b489e8f813ad5645095833426b12d562dbf4062226f12dc5b1be3f9465
 ```
 Verify
 ```
 docker ps -a | grep prom
-03a3a83a0430   prom/prometheus "/bin/prometheus --c…"   5 minutes ago    Up 5 minutes prometheus
+44cfd54b489e   prom/prometheus "/bin/prometheus --c…"   5 minutes ago    Up 5 minutes prometheus
 ```
 
 **Note:**
-Using --network=host makes the docker behave like native applications on the host and will be accessible via host IP address **172.17.0.1** as shown below:
+Using **--network=host** makes the docker behave like native applications on the host and will be accessible via host IP address **172.17.0.1** as shown below:
 
 ```
 ip addr show
@@ -238,6 +293,12 @@ Password: admin
 #### Step 3c: Add Prometheus as a Data Source
 In the left-hand menu, Goto: Home -> Connections -> Data sources ->prometheus
 
+In the list of data sources, select Prometheus.
+Enter the following details:
+URL: http://172.17.0.1:9090
+Leave other fields as default 
+Click the Save & Test button to verify the connection.
+
 <table>
   <tr>
     <td><img src="../Images/grafana-add-prometheus-data-source.png" alt="Grafana Login Page" width="800"></td>
@@ -245,19 +306,28 @@ In the left-hand menu, Goto: Home -> Connections -> Data sources ->prometheus
   </tr>
 </table>
 
+#### Step 3d: Verify Targets and Alerts
 
-#### Step 3d: Configure Prometheus
-In the list of data sources, select Prometheus.
-Enter the following details:
-URL: http://host.docker.internal:9090.
-Leave other fields as default 
-Click the Save & Test button to verify the connection.
+<table>
+  <tr>
+    <td><img src="../Images/prometheus-Targets.png" alt="Grafana Targets" width="800"></td>
+    <td><img src="../Images/prometheus-Alerts.png" alt="Grafana Alerts Page" width="800"></td>
+  </tr>
+</table>
+
 
 2. Create a new dashboard with the following panels:
-   - **Panel 1**: Query `total_deliveries`.
-   - **Panel 2**: Query `pending_deliveries` and `on_the_way_deliveries`.
-   - **Panel 3**: Query `average_delivery_time`.
-
+   - Panel 1: Total Deliveries (total_deliveries)
+   - Panel 2: Pending Deliveries (pending_deliveries)
+   - Panel 3: On-the-Way Deliveries (on_the_way_deliveries)
+   - Panel 4: Average Delivery Time (average_delivery_time_sum / average_delivery_time_count)
+   - 
+<table>
+  <tr>
+    <td><img src="../Images/grafana-dellivery-monitoirng-dashboard.png" alt="Grafana Dashboard" width="800"></td>
+  </tr>
+</table>
+  
 ---
 
 ### **Step 4: Automate Alerts in Prometheus**
