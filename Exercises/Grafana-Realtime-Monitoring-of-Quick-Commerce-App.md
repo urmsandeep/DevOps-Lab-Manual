@@ -179,11 +179,14 @@ ip addr show
     inet6 fe80::42:34ff:fe20:6175/64 scope link
        valid_lft forever preferred_lft forever
 ```
-
 ---
 Access Prometheus at [http://localhost:9090](http://localhost:9090) , would like this:
 
 ![Prometheus Main Page](../Images/prometheus-main-page.png "Prome")
+
+**Verify Targets via Prometheus -> Status -> Targets**
+
+![Prometheus Targets Page](../Images/prometheus-Targets-Running.png "Targets")
 
 ---
 
@@ -235,6 +238,12 @@ Password: admin
 #### Step 3c: Add Prometheus as a Data Source
 In the left-hand menu, Goto: Home -> Connections -> Data sources ->prometheus
 
+<table>
+  <tr>
+    <td><img src="../Images/grafana-add-prometheus-data-source.png" alt="Grafana Login Page" width="800"></td>
+    <td><img src="../Images/grafana-add-prometheus-ip-address.png" alt="Grafana Login Page" width="800"></td>
+  </tr>
+</table>
 
 
 #### Step 3d: Configure Prometheus
