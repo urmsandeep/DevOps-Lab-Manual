@@ -152,32 +152,45 @@ scrape_configs:
 5. Prometheus will send HTTP GET requests to http://host.docker.internal:8000/metrics periodically at **default interval (15s)** to retrieve metrics.
    
 Run Prometheus:
-```bash
-docker run -d --name prometheus -p 9090:9090 \
-  -v $(pwd)/prometheus.yml:/etc/prometheus/prometheus.yml prom/prometheus
+```
+docker run -d --name=prometheus --network=host prom/prometheus
 ```
 
 Output
 ```
-docker run -d --name prometheus -p 9090:9090   -v $(pwd)/prometheus.yml:/etc/prometheus/prometheus.yml prom/prometheus
+docker run -d --name=prometheus --network=host prom/prometheus
 754702408add8b672f0328e265e73b8bcf1d832317438d05d167349a83673f39
 ```
 Verify
 ```
 docker ps -a | grep prom
-9b29317aa435   prom/prometheus  "/bin/prometheus --c…"   6 seconds ago   Up 4 seconds  0.0.0.0:9090->9090/tcp, :::9090->9090/tcp prometheus
+03a3a83a0430   prom/prometheus "/bin/prometheus --c…"   5 minutes ago    Up 5 minutes prometheus
 ```
 
-Access Prometheus at [http://localhost:9090](http://localhost:9090).
+**Note:**
+Using --network=host makes the docker behave like native applications on the host and will be accessible via host IP address **172.17.0.1** as shown below:
 
-![Prometheus Main Page](images/prometheus-main-page.png "Prome")
+```
+ip addr show
+3: docker0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default
+    link/ether 02:42:34:20:61:75 brd ff:ff:ff:ff:ff:ff
+    inet 172.17.0.1/16 brd 172.17.255.255 scope global docker0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::42:34ff:fe20:6175/64 scope link
+       valid_lft forever preferred_lft forever
+```
+
+---
+Access Prometheus at [http://localhost:9090](http://localhost:9090) , would like this:
+
+![Prometheus Main Page](../Images/prometheus-main-page.png "Prome")
 
 ---
 
 ### **Step 3: Set Up Grafana**
 
 Run Grafana:
-```bash
+```
 docker run -d --name grafana -p 3000:3000 grafana/grafana
 ```
 
@@ -202,18 +215,27 @@ ip addr show docker0
     inet6 fe80::42:11ff:fe26:9513/64 scope link
        valid_lft forever preferred_lft forever
 ```
-Note the IP address (for example, here IP address is): 172.17.0.1
+Note the IP address (for example, here IP address is): **172.17.0.1**
 
 
 #### Step 3a: Access Grafana
-Open Grafana in your browser at http://localhost:3000.
+Open Grafana in your browser at [http://localhost:3000](http://localhost:3000)
 
-#### Step 3b: Log in with the default credentials:
+#### Step 3b: Log in with the default credentials and skip update password 
 Username: admin
-Password: admin.
+Password: admin
+
+<table>
+  <tr>
+    <td><img src="../Images/grafana-login-page.png" alt="Grafana Login Page" width="800"></td>
+    <td><img src="../Images/grafana-login-change-pwd-skip.png" alt="Grafana Login Page" width="800"></td>
+  </tr>
+</table>
 
 #### Step 3c: Add Prometheus as a Data Source
 In the left-hand menu, Goto: Home -> Connections -> Data sources ->prometheus
+
+
 
 #### Step 3d: Configure Prometheus
 In the list of data sources, select Prometheus.
