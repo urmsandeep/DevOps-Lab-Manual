@@ -332,6 +332,43 @@ Click the Save & Test button to verify the connection.
 
 ### **Step 5: Create the Jenkins Pipeline**
 
+#### **Step 5a: Check Jenkins Docker Status**
+Check if you already runnning any Jenkins docker instance and it's status
+```
+docker ps -a | grep jenkins
+d350facb3a26   jenkins/jenkins:lts  "/usr/bin/tini -- /u…"   5 weeks ago    Exited (255) 3 weeks ago   0.0.0.0:8080->8080/tcp, :::8080->8080/tcp, 0.0.0.0:50000->50000/tcp, :::50000->50000/tcp
+         jenkins
+```
+If Jenkins has exited or you want to start a fresh instance, removing existing instance using 'docker rm <container-id>' command
+```
+docker rm d350facb3a26
+```
+#### **Step 5b: Start Jenkins with Docker**
+```
+docker run -d -p 8080:8080 -p 50000:50000 --name jenkins -v jenkins_home:/var/jenkins_home jenkins/jenkins:lts
+```
+
+> ⚠️ **Note**  
+>  `-p 8080:8080: Exposes the web interface on the host's port 8080`<br>
+>  `-p 50000:50000: Exposes the agent communication port on the host's port 50000`<br>
+
+
+
+> 🖥️ **Example**  > 
+> ```
+> docker run -d -p 8080:8080 -p 50000:50000 --name jenkins -v jenkins_home:/var/jenkins_home jenkins/jenkins:lts  
+> ```
+> Output:  
+> `3ce8ccb39ac56214b1bedcf7f044a5bb33bf6c07acce124d2c21e50c1b5629f5`
+>  Verify if Jenkins is Up and running
+> ```
+> docker ps -a | grep jenkins
+> 3ce8ccb39ac5   jenkins/jenkins:lts  "/usr/bin/tini -- /u…"   9 seconds ago   Up 8 seconds 0.0.0.0:8080->8080/tcp, :::8080->8080/tcp, 0.0.0.0:50000->50000/tcp, :::50000->50000/tcp
+> ```  
+
+This ensures that Jenkins is accessible both for administration via the web and for distributed builds via agents.
+Access Jenkins: Open your browser and go to **http://localhost:8080**
+
 Create a file named `Jenkinsfile`:
 
 ```groovy
