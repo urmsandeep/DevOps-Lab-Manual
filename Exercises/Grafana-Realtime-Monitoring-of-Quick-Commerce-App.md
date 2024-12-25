@@ -353,7 +353,6 @@ docker run -d -p 8080:8080 -p 50000:50000 --name jenkins -v jenkins_home:/var/je
 >  `-p 50000:50000: Exposes the agent communication port on the host's port 50000`<br>
 
 
-
 > 🖥️ **Example**  > 
 > ```
 > docker run -d -p 8080:8080 -p 50000:50000 --name jenkins -v jenkins_home:/var/jenkins_home jenkins/jenkins:lts  
@@ -369,15 +368,62 @@ docker run -d -p 8080:8080 -p 50000:50000 --name jenkins -v jenkins_home:/var/je
 This ensures that Jenkins is accessible both for administration via the web and for distributed builds via agents.
 Access Jenkins: Open your browser and go to **http://localhost:8080**
 
-Create a file named `Jenkinsfile`:
+> ⚠️ Finding the Initial Admin Password <br>
+> For first-time access, Jenkins requires an admin password <br>
+> Follow these steps to Retrieve Initial Admin password for Jenkins. <br>
+> (a) Login the Jenkins docker instance using 'docker exec -it jenkins bash' <br>
+> (b) Run 'sudo cat /var/lib/jenkins/secrets/initialAdminPassword' to display password and copy it <br>
+> For more information refer to : [Getting started with Jenkins](https://github.com/urmsandeep/DevOps-Lab-Manual/blob/main/Exercises/Jenkins-CI-Automation.md#getting-started-with-jenkins)
+```
+docker exec -it jenkins bash
+jenkins@3ce8ccb39ac5:/$ cat /var/jenkins_home/secrets/initialAdminPassword
+fe677853d23642ce9eccc7cf44f3a19d
+jenkins@3ce8ccb39ac5:/$ exit
+```
 
-```groovy
+#### **Step 5b: Create a file named `Jenkinsfile`
+In your local directory, create the file named "Jenkinsfile" with the following contents
+```
 pipeline {
     agent any
     stages {
-        stage('Checkout Code') {
+        stage('Pre-check Docker') {
             steps {
-                git 'https://github.com/your-repo/delivery_monitoring.git'
+                script {
+                    try {
+                        // Check if Docker is installed
+                        def dockerVersion = sh(script: 'docker --version', returnStdout: true).trim()
+                        if (!dockerVersion) {
+                            error "Docker is not installed or not in the PATH. Please install Docker."
+                        }
+
+                        // Check if Docker daemon is running
+                        def dockerInfo = sh(script: 'docker info', returnStatus: true)
+                        if (dockerInfo != 0) {
+                            error "Docker daemon is not running. Please start the Docker service."
+                        }
+
+                        echo "Docker is available and running: ${dockerVersion}"
+                    } catch (Exception e) {
+                        error "Pre-check failed: ${e.message}"
+                    }
+                }
+            }
+        }
+        stage('Setup Workspace') {
+            steps {
+                script {
+                    // Define the local source path where the files are located
+                    def localSourcePath = '/path/to/your/local/files' // Replace with your actual path
+                    def workspacePath = env.WORKSPACE
+
+                    // Copy necessary files into the Jenkins workspace
+                    sh """
+                    cp ${localSourcePath}/delivery_metrics.py ${workspacePath}/
+                    cp ${localSourcePath}/prometheus.yml ${workspacePath}/
+                    cp ${localSourcePath}/alert_rules.yml ${workspacePath}/
+                    """
+                }
             }
         }
         stage('Build Docker Image') {
@@ -394,7 +440,9 @@ pipeline {
             steps {
                 sh '''
                 docker run -d --name prometheus -p 9090:9090 \
-                  -v $WORKSPACE/prometheus.yml:/etc/prometheus/prometheus.yml prom/prometheus
+                  -v $WORKSPACE/prometheus.yml:/etc/prometheus/prometheus.yml \
+                  -v $WORKSPACE/alert_rules.yml:/etc/prometheus/alert_rules.yml \
+                  prom/prometheus
                 docker run -d --name grafana -p 3000:3000 grafana/grafana
                 '''
             }
@@ -402,6 +450,21 @@ pipeline {
     }
 }
 ```
+
+Use the Jenkinsfile Directly in the Jenkins Web Interface
+You can also copy and paste the Jenkinsfile into Jenkins:
+
+Why:
+
+Useful for quick tests or when setting up pipelines without using source control.
+Good for experimentation or prototyping.
+Steps:
+
+In Jenkins, create a pipeline job:
+Go to New Item > Pipeline > Pipeline script.
+Paste your Jenkinsfile code into the "Pipeline Script" section.
+Save and run the pipeline.
+
 
 Run Jenkins:
 ```bash
