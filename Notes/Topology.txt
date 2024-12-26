@@ -1,0 +1,96 @@
+Commands
+# inet: The WSL2 IP address (e.g., 172.19.153.100).
+ip addr show eth0 | grep inet 
+docker network ls
+
+
+
+Networking in Docker Desktop + WSL2
+
++---------------------------------------+
+|             Windows Host              |
+|---------------------------------------|
+|                                       |
+|  +-------------------------------+    |
+|  | Docker Desktop VM             |    |
+|  |-------------------------------|    |
+|  | +---------------------------+ |    |
+|  | | docker0 (Bridge Network)  | |    |
+|  | |---------------------------| |    |
+|  | | Subnet: 172.17.x.x        | |    |
+|  | | Gateway: 172.17.0.1       | |    |
+|  | |---------------------------| |    |
+|  | | Containers:               | |    |
+|  | |  - Prometheus: 172.17.0.2 | |    |
+|  | |  - Grafana:    172.17.0.3 | |    |
+|  | +---------------------------+ |    |
+|  +-------------------------------+    |
+|                                       |
+|  +-------------------------------+    |
+|  | WSL2 Subsystem                |    |
+|  |-------------------------------|    |
+|  | +---------------------------+ |    |
+|  | | eth0 (WSL2 Network)       | |    |
+|  | |---------------------------| |    |
+|  | | Subnet: 172.19.x.x        | |    |
+|  | | IP: 172.19.153.100        | |    |
+|  | |---------------------------| |    |
+|  | | Python Program:           | |    |
+|  | |  - Port: 8000             | |    |
+|  | +---------------------------+ |    |
+|  +-------------------------------+    |
+|                                       |
++---------------------------------------+
+
+WSL2 → eth0 (WSL2 Network) → Windows Host → Docker Desktop VM → docker0 (Docker Bridge) → Docker Container
+
+Visualizing the Flow
++---------------------+           +----------------------+           +-----------------------+
+|       WSL2          |  <---->   |    Windows Host      |  <---->   |  Docker Desktop VM    |
+|---------------------|           |----------------------|           |-----------------------|
+| eth0: 172.19.x.x    |           | host.docker.internal |           | docker0: 172.17.x.x   |
+| Python: 8000        |           | Gateway to WSL2      |           | Containers: Prometheus|
++---------------------+           +----------------------+           +-----------------------+
+
+
+
+
+Networking in WSL2 with Docker
+
++----------------------------------+
+|             WSL2                 |
+|----------------------------------|
+|                                  |
+|  +----------------------------+  |
+|  |          eth0              |  |
+|  |----------------------------|  |
+|  | WSL2 Subnet: 172.19.x.x    |  |
+|  | WSL2 IP: 172.19.153.100    |  |
+|  +----------------------------+  |
+|                                  |
+|  +----------------------------+  |
+|  |         docker0            |  |
+|  |----------------------------|  |
+|  | Docker Subnet: 172.17.x.x  |  |
+|  | Bridge Gateway: 172.17.0.1 |  |
+|  +----------------------------+  |
+|                                  |
+|  +----------------------------+  |
+|  |   Docker Containers        |  |
+|  |----------------------------|  |
+|  | Container 1:               |  |
+|  |   Prometheus               |  |
+|  |   IP: 172.17.0.2           |  |
+|  |----------------------------|  |
+|  | Container 2:               |  |
+|  |   Grafana                  |  |
+|  |   IP: 172.17.0.3           |  |
+|  +----------------------------+  |
+|                                  |
++----------------------------------+
+
+Legend:
+- **eth0**: The primary network interface for WSL2. It connects WSL2 to the host network.
+- **docker0**: The default virtual bridge network for Docker containers. It connects containers to each other and the host.
+- **Docker Containers**: Containers use the `docker0` bridge to communicate within Docker's subnet (`172.17.x.x`).
+
