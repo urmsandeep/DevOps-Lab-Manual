@@ -2,7 +2,7 @@ Commands
 # inet: The WSL2 IP address (e.g., 172.19.153.100).
 ip addr show eth0 | grep inet 
 docker network ls
-
+host.docker.internal:Allows Docker containers to access services running on the Windows host or WSL2.
 
 
 Networking in Docker Desktop + WSL2
@@ -43,6 +43,23 @@ Networking in Docker Desktop + WSL2
 +---------------------------------------+
 
 WSL2 → eth0 (WSL2 Network) → Windows Host → Docker Desktop VM → docker0 (Docker Bridge) → Docker Container
+
+Simplified Diagram
+
++-----------------------------+            +-----------------------------+
+|         Docker Network      |            |          WSL2 Network       |
+|-----------------------------|            |-----------------------------|
+| Subnet: 172.17.x.x          |            | Subnet: 172.19.x.x          |
+| Container: Prometheus       |            | WSL2: Python Program        |
+| IP: 172.17.0.2              |            | IP: 172.19.153.100          |
++-----------------------------+            +-----------------------------+
+        \                                   /
+         \---------------------------------/
+           Virtual Bridge for Communication
+
+Docker
+
+
 
 Visualizing the Flow
 +---------------------+           +----------------------+           +-----------------------+
@@ -93,4 +110,26 @@ Legend:
 - **eth0**: The primary network interface for WSL2. It connects WSL2 to the host network.
 - **docker0**: The default virtual bridge network for Docker containers. It connects containers to each other and the host.
 - **Docker Containers**: Containers use the `docker0` bridge to communicate within Docker's subnet (`172.17.x.x`).
+
+
++------------------------+
+|          WSL2          |
+|------------------------|
+| +--------------------+ |
+| |  Prometheus (Docker)|<---+
+| |   172.17.0.2:9090  |    |
+| +--------------------+    |
+|                           |
+| +--------------------+    | Docker bridge network (shared)
+| |  Grafana (Docker)  |----+
+| |   172.17.0.3:3000  |    |
+| +--------------------+    |
+|                           |
+| +---------------------+   |
+| | Python Program      |---+
+| |   172.19.x.x:8000   |   |
+| +---------------------+   |
++------------------------+
+
+
 
