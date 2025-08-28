@@ -31,6 +31,19 @@ Simulate this  using the popular `nginx` container image (think of it as Zeptoâ€
      ```powershell
      choco install minikube
      ```
+   - On WSL (Windows Linux)
+     Run these commands inside your **WSL terminal**:
+     ```bash
+     # Update system
+     sudo apt-get update -y
+     sudo apt-get install -y curl apt-transport-https virtualbox virtualbox-ext-pack
+
+     # Download Minikube
+     curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+
+     # Install Minikube binary
+     sudo install minikube-linux-amd64 /usr/local/bin/minikube
+
    > You need **Docker** or a VM driver (VirtualBox, Hyper-V) installed.
 
 ### Steps: Deploy Ngnix Image as a Pod
