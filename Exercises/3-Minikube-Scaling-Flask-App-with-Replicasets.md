@@ -19,6 +19,64 @@ Once the sale ends and traffic returns to normal, Kubernetes can scale back down
 - Efficiency → Instead of over-provisioning servers, we add Pods when demand spikes and remove them when demand is low.
 - Scalability in the Real World → Exactly how Netflix, YouTube, or Swiggy scale their microservices to handle peak traffic hours.
 
+## Create an App to take Buy orders for a !!Flash Sale!!
+
+```
+# app.py
+from flask import Flask, request
+import socket, time, random
+
+app = Flask(__name__)
+
+@app.get("/")
+def homepage():
+    return {
+        "message": "Welcome to Big Sale!",
+        "pod": socket.gethostname(),
+        "ts": time.time()
+    }
+
+@app.get("/buy")
+def buy():
+    # simulate a flash sale checkout
+    item = random.choice(["Smartphone", "Shoes", "Headphones", "Laptop"])
+    user = request.args.get("user", f"user{random.randint(1,1000)}")
+    return {
+        "status": "success",
+        "item": item,
+        "user": user,
+        "served_by_pod": socket.gethostname(),
+        "time": time.strftime("%H:%M:%S")
+    }
+
+@app.get("/health")
+def health():
+    return {"status": "healthy", "pod": socket.gethostname()}
+```
+
+# App details
+- / → Welcomes users to the Big Sale.
+- /buy → Simulates a checkout during a flash sale.
+- Assigns a random product or uses ?user=123 query param.
+- Shows which Pod served the request → students can see load distribution across Pods.
+- /health → For readiness/liveness probes.
+
+# Build and push docker image
+## Create Docker file
+```
+FROM python:3.11-slim
+WORKDIR /app
+COPY ex3-flash-sale.py .
+RUN pip install --no-cache-dir flask gunicorn
+CMD ["gunicorn","-b","0.0.0.0:5000","app:app","--workers","1","--threads","2"]
+```
+
+## Build Docker image and push to your docker repository
+```
+docker build -t <your-dockerhub-username>/flashsale:1.0 .
+docker push <your-dockerhub-username>/flashsale:1.0
+```
+
 ## Step 1: Clean up previous minikube does
 
 If you already have a running cluster, you'll need to stop and delete it before starting a new one
@@ -61,41 +119,78 @@ NAME       STATUS   ROLES           AGE   VERSION
 minikube   Ready    control-plane   42s   v1.31.0
 ```
 
+
+
+
 ## Step 3: Create a new file replicaset.yaml with the following content:
 
-File Name: replicaset.yaml 
+File Name: flashsale-replicaset.yaml 
 ```
 apiVersion: apps/v1
 kind: ReplicaSet
 metadata:
-  name: flask-app-rs
+  name: flashsale-rs
+  labels:
+    app: flashsale
 spec:
-  replicas: 3
+  replicas: 3  ## Number of replicas (copies of flashsale app) to run
   selector:
     matchLabels:
-      app: flask-app
+      app: flashsale
   template:
     metadata:
       labels:
-        app: flask-app
+        app: flashsale
     spec:
       containers:
-      - name: flask-app
-        image: flask-app:latest
-        imagePullPolicy: Never
+      - name: flashsale-container
+        image: flashsale:1.0
         ports:
-        - containerPort: 15000
+        - containerPort: 5000
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 2
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flashsale-svc
+spec:
+  selector:
+    app: flashsale
+  ports:
+  - name: http
+    port: 80
+    targetPort: 5000
+  type: ClusterIP
 ```
 
 ## Step 4: Apply the ReplicaSet configuration:
 
 ```
-kubectl apply -f replicaset.yaml
+kubectl apply -f flashsale-replicaset.yaml
 ```
 
 Output
 ```
-replicaset.apps/flask-app-rs created
+replicaset.apps/flashsale-rs created
+service/flashsale-svc created
 ```
 
 ## Step 5: Initialize minikube, build Imange and Verify the ReplicaSet:
@@ -112,9 +207,9 @@ docker build -t flask-app .
 kubectl get pods
 
 NAME                 READY   STATUS    RESTARTS   AGE
-flask-app-rs-4nr6q   1/1     Running   0          3m35s
-flask-app-rs-84v7x   1/1     Running   0          3m35s
-flask-app-rs-rbwr4   1/1     Running   0          3m35s
+flashsale-rs-8gbfp   1/1     Running   0          3m35s
+flashsale-rs-f4gsl   1/1     Running   0          3m35s
+flashsale-rs-nb5kl   1/1     Running   0          3m35s
 
 kubectl get rs
 
