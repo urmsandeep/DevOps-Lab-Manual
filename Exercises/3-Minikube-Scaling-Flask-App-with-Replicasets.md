@@ -14,10 +14,10 @@ Once the sale ends and traffic returns to normal, Kubernetes can scale back down
 - Observe pod distribution
 
 ## Key Observations and Learnings
-Pod Distribution → Each Pod is like an identical worker. Scaling means creating clones of the app.
-Resiliency → If one Pod fails, the ReplicaSet automatically creates another, so users don’t notice downtime.
-Efficiency → Instead of over-provisioning servers, we add Pods when demand spikes and remove them when demand is low.
-Scalability in the Real World → Exactly how Netflix, YouTube, or Swiggy scale their microservices to handle peak traffic hours.
+- Pod Distribution → Each Pod is like an identical worker. Scaling means creating clones of the app.
+- Resiliency → If one Pod fails, the ReplicaSet automatically creates another, so users don’t notice downtime.
+- Efficiency → Instead of over-provisioning servers, we add Pods when demand spikes and remove them when demand is low.
+- Scalability in the Real World → Exactly how Netflix, YouTube, or Swiggy scale their microservices to handle peak traffic hours.
 
 ## Step 1: Clean up previous minikube does
 
