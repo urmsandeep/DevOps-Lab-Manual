@@ -1,4 +1,4 @@
-# Exercise: Fine-tuning and Deploying an LLM for Course Name Extraction in Docker
+# Exercise: Fine-tuning and Deploying an LLM in Docker fine tuned for Course Name Extraction
 
 ## Objective
 To fine-tune a pre-trained language model to accurately extract the names of courses offered at a college and deploy it as a Docker container using FastAPI.
